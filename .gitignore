@@ -1,0 +1,9 @@
+.Rproj.user/
+binary/
+old/
+.RData
+.Rhistory
+*.log
+*.tex
+*.RData
+!metafor_results.RData
