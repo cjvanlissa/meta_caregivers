@@ -1,0 +1,36 @@
+Name,Beschrijving,Newname,Categorie
+selre_d,Self-report measures of caregiver competencies versus ‘objective’ test or observation by independent observer,Self_report,DV
+knowpo_d,Test focused on knowledge,DV_Knowledge,DV
+skillp_d,Test focused skills,DV_Skills,DV
+attitp_d,Test focused on attitudes,DV_Attitude,DV
+allign_d,Test alligned with the content of the training (yes/no),DV_Alligned,DV
+famcare,Setting (center-based care or family daycare),Setting,Instructional
+integrat,Whether the training was integrated into childcare practice,Integrated,Instructional
+superv_d,Whether supervision was part of the training,Supervision,Instructional
+medium_b,Scope of the training (narrow or broad),Scope,Instructional
+one_site,Location of the training (one-site or multi-site),Location,Instructional
+fixed_cu,Fixed curriculum,Curriculum,Instructional
+alt_trea,Alternative treatment for control group,Control,Instructional
+know_d,Explicit focus on knowledge,Train_Knowledge,Instructional
+skills_d,Explicit focus on skills,Train_Skills,Instructional
+attitudem_a,Explicit focus on attitude,Train_Attitude,Instructional
+videof_d,Use of video feedback,Video,Instructional
+agecar_d,Trainees’ age ,Trainee_Age,Instructional
+exper_d,Trainees’ working experience,Trainee_Experience,Instructional
+journa_d,Publication type (scientific journal or other publications),Journal,Methodological
+assignme,Random assignment or matching (at the level of the individual caregiver or childcare center),Assignment,Methodological
+two_grou,"Single group, or two-group experimental design",Design,Methodological
+pre_post,Pretest/posttest design (yes/no),Pre_Post,Methodological
+blind_d,Was a blinding procedure used?,Blind,Methodological
+drop_per,Attrition from the experimental condition (percentage),Attrition,Methodological
+twogr_d,"Single group, or two-group experimental design",Two_group_design,Methodological
+parex_d,Initial N of the experimental condition,Initial_N_exp,Methodological
+n_exp_d,Final N of the experimental condition,Final_N_exp,Methodological
+n_con2,Final N of the control condition,Final_N_con,Methodological
+es_pre_d,Pre-test effect size,Pretest_es,Methodological
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,

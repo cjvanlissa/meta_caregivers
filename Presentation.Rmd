@@ -48,34 +48,94 @@ library(caret)
 library(plotly)
 library(foreign)
 
+library(haven)
+MLWIN_leidster_def <- read_sav("C:/Users/lissa102/Dropbox/ERASMUS/Psych Methods paper/Ruben Fukking/MLWIN_leidster_def.sav")
+
 data <- read.spss("C:/Users/lissa102/Dropbox/ERASMUS/Psych Methods paper/Ruben Fukking/MLWIN_leidster_def.sav", use.value.labels = TRUE, to.data.frame = TRUE)
 
+variable_labels <- read.csv("Codeboek.csv", stringsAsFactors = FALSE)
+
+table1 <- read.csv("Table1.csv", stringsAsFactors = FALSE)
+# Scope: B = broad, N = narrow; focus: K = knowledge, S = skill, A = attitude; setting: C = center-based care, F = family care; Nr. sessions = number of sessions of the program; Hrs: average duration of one session in hours; Age: Average age of trainees;
+#Exp (years) = average working experience of trainees; Educ = years of formal education (in years).
+
+
+table2 <- read.csv("Table2.csv", stringsAsFactors = FALSE)
+# Note—Design: W = within-design, B = between design; assign = assignment to conditions is not random (NR), random (RA), or a matching procedure was used (MA); pre-test–post-
+# test = experimental design with pre-test and post-test; Nr Exp + Con Start = number of participants in the experimental and control group at the pretest; attrition Exp + Con = attrition (%) for
+# experimental and control group; Nr Exp + Con def. = deﬁnitive number of participants (at the post-test); Nr ES = number of effect sizes (caregiver or child level) for the treatment.
+table2$N.at.start.total <- sapply(table2$N.at.start, function(x){ eval(parse(text = x)) })
+table2$N.at.start.exp <- sapply(1:length(table2$N.at.start), function(x){ gsub("^(\\d+).*$", "\\1", table2$N.at.start[x]) })
+table2$N.at.start.con <- NA
+table2$N.at.start.con[table2$Design == "B"] <- 
+  sapply(1:length(table2$N.at.start[table2$Design == "B"]), function(x){ gsub("^.+\\+(\\d+)", "\\1", table2$N.at.start[table2$Design == "B"][x], perl = TRUE) })
+
+
+table2$N.definitive.total <- sapply(table2$N.definitive, function(x){ eval(parse(text = x)) })
+table2$N.definitive.exp <- sapply(1:length(table2$N.definitive), function(x){ gsub("^(\\d+).*$", "\\1", table2$N.definitive[x]) })
+table2$N.definitive.con <- NA
+table2$N.definitive.con[table2$Design == "B"] <- 
+  sapply(1:length(table2$N.definitive[table2$Design == "B"]), function(x){ gsub("^.+\\+(\\d+)", "\\1", table2$N.definitive[table2$Design == "B"][x], perl = TRUE) })
+
+
+try_to_match <- function(x, y){
+  unique_y <- y[!(duplicated(y)|duplicated(y, fromLast = TRUE))]
+  unique_x <- x[!(duplicated(x)|duplicated(x, fromLast = TRUE))]
+  unique_y <- unique_y[unique_y %in% unique_x]
+  sapply(x, function(i){
+    #i = x[1]
+    if(i %in% unique_y){
+      match(i, y)
+    } else {
+      NA
+    }
+  })
+}
+
+match_data <- data[!duplicated(data$exp_id), ]
+match_ids <- try_to_match(match_data$n_exp_d, table2$N.definitive.exp)
+match_ids[which(is.na(match_ids))] <- try_to_match(match_data$exper_d, table1$Exp)[which(is.na(match_ids))]
+match_ids[which(is.na(match_ids))] <- try_to_match(match_data$n_con2, 
+                                                   table2$N.definitive.con)[which(is.na(match_ids))]
+match_ids[which(is.na(match_ids))] <- try_to_match(match_data$parex_d,
+                                                   table2$N.at.start.exp)[which(is.na(match_ids))]
+match_ids[which(is.na(match_ids))] <- 8
+
+tables <- data.frame(table1, table2)
+tables <- tables[match_ids, ]
+
+tables <- tables[unlist(sapply(1:nrow(tables), function(x){ rep(x, tables$Nr..ES[x])})), ]
+
+data <- data.frame(data, tables)
+names(data)[which(names(data) %in% variable_labels$Name)] <- variable_labels$Newname[na.omit(match(names(data), variable_labels$Name))]
 # Prep data and authors text labels
 id_vars <- c("study_id", "exp_id", "exptreat_id", "es_id")
-numeric_vars <- c("agecar_d", "exper_d", "es_pos_d", "es_sed")
-categorical_vars <- c("journa_d", "famcare", "integrat", "superv_d", "medium_b", "one_site", "fixed_cu", "alt_trea", "assignme", "know_d", "skills_d", "attitudem_a", "videof_d", "two_grou", "pre_post", "blind_d", "parex_d", "drop_per", "n_exp_d", "n_con2", "es_pre_d",  "selre_d", "knowpo_d", "skillp_d", "attitp_d", "allign_d", "twogr_d")
+numeric_vars <- c("Trainee_Age", "Trainee_Experience", "es_pos_d", "es_sed")
+  #c("agecar_d", "exper_d", "es_pos_d", "es_sed")
+#categorical_vars <- c("journa_d", "famcare", "integrat", "superv_d", "medium_b", "one_site", "fixed_cu", "alt_trea", "assignme", "know_d", "skills_d", "attitudem_a", "videof_d", "two_grou", "pre_post", "blind_d", "parex_d", "drop_per", "n_exp_d", "n_con2", "es_pre_d",  "selre_d", "knowpo_d", "skillp_d", "attitp_d", "allign_d", "twogr_d")
+categorical_vars <- c("Journal", "Setting", "Integrated", "Supervision", "Scope", "Location", "Curriculum", "Control", "Assignment", "Train_Knowledge", "Train_Skills", "Train_Attitude", "Video", "Design", "Pre_Post", "Blind", "Initial_N_exp", "Attrition", "Final_N_exp", "Final_N_con", "Pretest_es", "Self_report", "DV_Knowledge", "DV_Skills", "DV_Attitude", "DV_Alligned", "Two_group_design")
+
 
 analyzedat <- data[, c("exp_id", categorical_vars, numeric_vars)]
 names(analyzedat)[match(c("exp_id", "es_pos_d", "es_sed"), names(analyzedat))] <- c("id_exp", "yi", "vi")
 analyzedat$vi <- analyzedat$vi^2
 analyzedat$id_effectsize <- 1:nrow(analyzedat)
-analyzedat$n_total <- analyzedat$n_con2+analyzedat$n_exp_d
-
-#authors <- paste(analyzedat$sc_authors, analyzedat$sc_pub_year, sep = ", ")
-#analyzedat <- analyzedat[, -match("sc_authors", names(analyzedat))]
-#effect_sizes <- escalc(ri = analyzedat$yi, ni = analyzedat$n_total, measure = "COR")
+analyzedat$n_total <- analyzedat$Final_N_con+analyzedat$Final_N_exp
 
 # Function for formatting stats
-nicetext <- function(x, digits = 2){
+nicetext <- function(x, digits = 2, equals = TRUE){
+  equal_sign <- "= "
   if(x%%1==0){
-    formatC(x, digits = 0, format = "f")
+    outstring <- formatC(x, digits = 0, format = "f")
   } else {
     if(abs(x) <  10^-digits){
-      paste0("< ", 10^-digits)
+      equal_sign <- "< "
+      outstring <- 10^-digits
     } else {
-      formatC(x, digits = digits, format = "f")
+      outstring <- formatC(x, digits = digits, format = "f")
     }
   }
+  ifelse(equals, paste0(equal_sign, outstring), outstring)
 }
 
 # Function to calculate I2
@@ -125,14 +185,7 @@ funnel_plotlyfi <- function(x, labels = NULL) {
     )
   
   #Draw Plot
-  fp = ggplot(aes(x = R, y = se), data = dat) +
-    geom_point(aes(
-      x = R,
-      y = se,
-      size = weights,
-      text = label
-    ), shape = 1) +
-    ylab('Standard Error') + xlab('R') +
+  fp = ggplot(data = dat) +
     geom_line(aes(x = ll95, y = se.seq), linetype = 'dotted', data = dfCI) +
     geom_line(aes(x = ul95, y = se.seq), linetype = 'dotted', data = dfCI) +
     geom_line(aes(x = ll99, y = se.seq), linetype = 'dashed', data = dfCI) +
@@ -149,13 +202,20 @@ funnel_plotlyfi <- function(x, labels = NULL) {
       xend = meanul95,
       yend = max(se.seq)
     ), data = dfCI) +
+    geom_point(aes(
+      x = R,
+      y = se,
+      size = weights,
+      colour = label,
+      text = label
+    ), shape = 1) +
+    ylab('Standard Error') + xlab('R') +
     scale_y_continuous(trans = "reverse",
                        limits = c(max(dat$se), 0),
                        expand = c(0, 0)) +
     scale_x_continuous(breaks = seq(-1.25, 2, 0.25)) +
-    guides(size = FALSE) +
-    theme_bw()
-
+    theme_bw()+
+    theme(legend.position="none")
   ggplotly(fp, tooltip = "text") %>% config(displayModeBar = F)
 }
 
@@ -165,64 +225,63 @@ funnel_plotlyfi <- function(x, labels = NULL) {
 
 ## Introduction
 
+Secondary analysis of [Fukkink & Lont, 2007](http://spinusa.net/Does%20Training%20Matter_2007_Fukkink.pdf):
 
+A meta-analysis on the effect of training on caregiver competency
 
-## Previous meta-analysis
+<!--Competency: knowledge, attitudes, and skills related to teacher-child interaction-->
 
+Goals of meta-analysis:
 
-## Moderators
+1. Summarize (quasi-)experimental studies
+2. **What study characteristics are associated with training efficacy?**
 
-Meta-analysis intended to summarize highly similar studies
-
-Often (ab?)used to summarize diverse bodies of research
-
-Differences between studies can be coded as moderators
-
-Problem with classic meta-regression:
-
-* Lacks power to identify relevant moderators
-* Overfitting
-* Forget about including interactions!
-
-## Metaforest
-
-Machine-learning based technique to identify relevant moderators
-
-High power with as few as 20 studies
-
-Controls overfitting
-
-Accounts for interactions and non-linear effects
-
-[Van Lissa, 2017](https://osf.io/khjgb/)
-
+Thus: Moderator analysis was an explicit goal of the original work
 
 ## Methods
 
-Electronic databases:
-<!--
-* Web of Science
-* PsychInfo
+Searched for studies published between 1980 and 2005
+
+Literature search:
+
 * ERIC
+* PsychINFO
+* SSCI
+* Gray literature
+* Backward search by author names
+
+Search terms:
+
+* train\*, instruct\*, educat\*, prepar\*, experiment\*
+* childcare, early childhood, preschool, caregiver\*, teacher\*
+
+Found `r max(analyzedat$id_exp)` unique samples, yielding `r nrow(analyzedat)` effect sizes (Hedges' G)
+
+<!--Inclusion criteria well-defined:
+
+* Evaluation of caregiver skill training
+* Regular childcare setting
+* Caregiver primary focus of evaluation
+
+Exclusion decisions explained in paper
+
+Not clear how many articles were screened at each step
+
+Studies were also located by searching for additional references in the references of collected reports. In addition, the databases were searched in a second round, using the names of the authors of relevant reports that had been identiﬁed in the original search. At the suggestion of Peters and Kostelnik (1981) and Saracho (1993; see the Introduction) and meta-analytical guidelines (e.g., Rosenthal, 1994), unofﬁcial publications (“fugitive literature”) were also included in the search. The broad-ranging search was followed by a selection of studies, based on a reading of their full content. Selection was based on the following criteria: First, we included only reports that provided information about studies involving specialized caregiver training with a focus on interaction skills with children (see Kontos & Wilcox-Herzog, 1997) in a regular childcare setting. Second, we included only those studies in which the caregiver was the primary focus of the evaluation, possibly supplemented with a focus on children. We did not include studies that focused speciﬁcally on children with disabilities, early childhood special education or residential childcare. Studies involving childcare counseling and consultation were also not included. Furthermore, we did not include studies that involved teacher competencies that are not directly related to regular caregiver–child interaction.2 Both two-group designs (i.e., with a treatment and comparison group) and one-group designs with a pretest and posttest were included. Like in many other applied research areas, the pool of relevant childcare studies comprises both designs (Shadish, Cook, & Campbell, 2002; Morris & DeShon, 2002). Following meta-analytic guidelines (Gibbons, Hedeker, & Davis, 1993; Morris & DeShon, 2002; Wampler, Reifman, & Serovich, 2005), we selected all studies to include all empirical evidence available 2 For example, the enhanced frequency of elaborated use of target words during interactive reading (see Wasik and Bond, 2001), speciﬁc caregiver behaviors during music activities (see De l’Etoile, 2001) or caregiver attitude towards math activities (see Arnold et al., 2002).  298 R.G. Fukkink, A. Lont / Early Childhood Research Quarterly 22 (2007) 294–311 pertaining to the central hypothesis of this study. Finally, we included only studies that reported the statistics that are necessary to deduce effect sizes. A number of studies did not contain this information. These studies, which included both group designs and single-subject designs, are brieﬂy discussed in a narrative review, but could not be included in the meta-analysis.
 -->
-Articles screened: 
-
-Relevant articles: 
-
-Of these, `r max(analyzedat$id_exp)` reported a total of `r nrow(analyzedat)` effect sizes (Cohen's d)
 
 ## Dataset
 
-Observed effect sizes ranged from `r nicetext(range(analyzedat[["yi"]])[1])` to `r nicetext(range(analyzedat[["yi"]])[2])`  
-$M_r = `r nicetext(mean(analyzedat[["yi"]]))`$, $SD = `r nicetext(sd(analyzedat[["yi"]]))`$
+Observed effect sizes ranged from `r nicetext(range(analyzedat[["yi"]])[1], equals = FALSE)` to `r nicetext(range(analyzedat[["yi"]])[2], equals = FALSE)`  
+$M_g `r nicetext(mean(analyzedat[["yi"]]))`$, $SD `r nicetext(sd(analyzedat[["yi"]]))`$
 
 Sample sizes ranged from `r min(analyzedat[["n_total"]])` to `r max(analyzedat[["n_total"]])`  
-$M_n = `r nicetext(mean(analyzedat[["n_total"]]))`$, $SD = `r nicetext(sd(analyzedat[["n_total"]]))`$
+$M_n `r nicetext(mean(analyzedat[["n_total"]]))`$, $SD `r nicetext(sd(analyzedat[["n_total"]]))`$
 
-Several studies reported multiple effect sizes (`r min(table(analyzedat[["id_exp"]]))` to `r max(table(analyzedat[["id_exp"]]))`
+Several studies reported multiple effect sizes (`r min(table(analyzedat[["id_exp"]]))` to `r max(table(analyzedat[["id_exp"]]))`)
 
 
-## Standard meta-analysis
+## Replicating the original meta-analysis
 
 ```{r metafor_analysis, include=FALSE}
 if(run_metafor){
@@ -241,7 +300,7 @@ if(run_metafor){
   c(df=aov_between$p.r, aov_between$fit.stats.r[c(3:4, 1)], LRT = aov_between$LRT, p = aov_between$pval),
   c(df=aov_bothnull$p.r, aov_bothnull$fit.stats.r[c(3:4, 1)], LRT = aov_bothnull$LRT, p = aov_bothnull$pval)
   )
-  rownames(aov_table) <- c("Three-level model", "Within-studies variance constrained", "Between-studies variance constrained", "Both variance components constrained")
+  rownames(aov_table) <- c("Full three-level model", "Within-studies variance constrained", "Between-studies variance constrained", "Both variance components constrained")
   aov_table[,-c(1,6)] <- formatC(aov_table[,-c(1,6)], digits = 2, format = "f")
   aov_table[,6] <- formatC(as.numeric(aov_table[,6]), digits = 3, format = "f")
   aov_table[1, 5:6] <-""
@@ -261,7 +320,7 @@ if(run_metafor){
 ```
 
 ```{r metafor_moderators, include = FALSE}
-mods <- c("journa_d", "fixed_cu", "allign_d", "one_site", "n_total","skillp_d")
+mods <- c("Journal", "Curriculum", "DV_Alligned", "Location", "n_total", "DV_Skills")
 mod.matrix <- model.matrix(as.formula(paste0("yi~", paste(mods, collapse = "+"))), data = analyzedat)[, -1]
 rma.mods.fukkink <- rma(yi = analyzedat$yi, vi = analyzedat$vi, mods = mod.matrix)
 
@@ -272,20 +331,23 @@ one_at_a_time <- t(apply(mod.matrix, 2, function(x){
 }))
 ```
 
-
 Multilevel meta-analysis for dependent effect sizes<font size="2">  
 ([Van den Noortgate et al., 2013]())</font>
 
 **Overall effect size:**
 
-$\hat{\rho} = `r nicetext(model.full[["b"]][1])`$, 95\% CI [`r nicetext(model.full[["ci.lb"]])`, `r nicetext(model.full[["ci.ub"]])`]
+$\hat{\gamma} `r nicetext(model.full[["b"]][1])`$, 95\% CI [`r nicetext(model.full[["ci.lb"]], equals = FALSE)`, `r nicetext(model.full[["ci.ub"]], equals = FALSE)`]
 
 **Tests for residual heterogeneity**
 
-* $Q(`r nrow(analyzedat)-1`) = `r nicetext(model.full[["QE"]])`, p = `r nicetext(model.full[["QEp"]])`$
-* Total $I^2 = `r paste0(nicetext(i2s[1]), "\\%")`$
-* Between studies: $I^2_b = `r paste0(nicetext(i2s[2]), "\\%")`$
-* Within studies: $I^2_w = `r paste0(nicetext(i2s[3]), "\\%")`$
+* $Q(`r nrow(analyzedat)-1`) `r nicetext(model.full[["QE"]])`, p `r nicetext(model.full[["QEp"]])`$
+* Total $I^2 `r paste0(nicetext(i2s[1]), "\\%")`$
+* Between studies: $I^2_b `r paste0(nicetext(i2s[2]), "\\%")`$, $\sigma^2_b `r nicetext(confints[[1]]$random[1,1])`$, 95\% CI [`r nicetext(confints[[1]]$random[1,2], equals = FALSE)`, `r nicetext(confints[[1]]$random[1,3], equals = FALSE)`]
+* Within studies: $I^2_w `r paste0(nicetext(i2s[3]), "\\%")`$, $\sigma^2_w `r nicetext(confints[[2]]$random[1,1])`$, 95\% CI [`r nicetext(confints[[2]]$random[1,2], equals = FALSE)`, `r nicetext(confints[[2]]$random[1,3], equals = FALSE)`]
+
+The overall effect size exactly replicates the findngs in the paper.
+
+<!--, but the estimates of residual heterogeneity differ somewhat. This is likely due to difference in estimators: We used Van den Noortgate's multilevel approach, which was published after Fukkink & Lont's paper. Not clear which multilevel approach they used. -->
 
 ## Publication bias
 
@@ -295,30 +357,58 @@ beggs <- regtest(x = analyzedat$yi, vi = analyzedat$vi)
 #file drawer analysis (fail and safe)
 filedrawer <- fsn(yi = analyzedat$yi, vi = analyzedat$vi)
 
-funnel_plotlyfi(model.full, analyzedat$id_exp)
+funnel_plotlyfi(model.full, data$Paper)
 
 ```
 
-Funnel plot asymmetry test: $z = `r nicetext(beggs[["zval"]])`, p = `r nicetext(beggs[["pval"]])`$
+Some evidence for publication bias:
 
-File drawer analysis: $K = `r filedrawer[["fsnum"]]`$
+Funnel plot asymmetry test: $z `r nicetext(beggs[["zval"]])`, p `r nicetext(beggs[["pval"]])`$
+
+File drawer analysis indicated that $K = `r filedrawer[["fsnum"]]`$ studies averaging null-results would have to be added to render the summary effect non-significant 
 
 # Moderator analyses
 
-## Metaforest analysis
+## Meta-analysis on heterogeneous bodies of literature
 
-Metaforest analysis  
-([R-package by Van Lissa, 2017](https://cran.r-project.org/package=metaforest))
+Meta-analysis designed to summarize highly similar studies
 
-Dependent effect sizes: Clustered bootstrapping
+Often (ab?)used to summarize diverse bodies of research
 
-Unbiased prediction error: Two parallel forests (10.000 trees)<font size="2">  
-([Janitza, Celik, & Boulesteix, 2016](https://doi.org/10.1007/s11634-016-0276-4))</font>
+Differences between studies can be coded as moderators
 
+Problem with classic meta-regression:
 
-## Recursive pre-selection
+* Lacks power to identify relevant moderators
+* Overfitting when the number of studies is not **much larger** than the number of moderators
+* And just forget about including interactions!
 
-**Problem:** Large number of potential moderators (60)
+**Fukkink & Lont coded 28 moderators, for 17 studies**
+
+## A solution: Metaforest
+
+Metaforest: Identifying relevant moderators in meta-analysis using the machine learning algorithm *random forests*  
+[R-package: Van Lissa, 2017](https://cran.r-project.org/package=metaforest)
+
+[Validation study: Van Lissa, 2017](https://osf.io/khjgb/)
+
+Advantages:
+
+* Simulations show high power with as few as 20 effect sizes
+* Controls overfitting
+* Accounts for interactions and non-linear effects
+
+When dealing with multilevel data:
+
+* Clustered bootstrapping of dependent effect sizes
+* Unbiased prediction error: 
+    + Two parallel forests (10.000 trees)
+    + Cross-predictions
+    + <font size="2">[Janitza, Celik, & Boulesteix, 2016](https://doi.org/10.1007/s11634-016-0276-4)</font>
+
+## Recursive pre-selection algorithm
+
+**Problem:** Very large number of potential moderators (28)
 
 **Solution:** Recursive pre-selection; 100 replications
 
@@ -336,37 +426,37 @@ Retained moderators selected in 30\%+ of replications
 
 ```{r recursive_metaforest, include = FALSE}
 if(run_recursive_metaforest) {
-  moderators <-
-  c("journa_d",
-"famcare",
-"integrat",
-"superv_d",
-"medium_b",
-"one_site",
-"fixed_cu",
-"alt_trea",
-"assignme",
-"know_d",
-"skills_d",
-"attitudem_a",
-"videof_d",
-"two_grou",
-"pre_post",
-"blind_d",
-"parex_d",
-"drop_per",
-"n_exp_d",
-"n_con2",
+  moderators <- c(
+    "Journal",
+"Setting",
+"Integrated",
+"Supervision",
+"Scope",
+"Location",
+"Curriculum",
+"Control",
+"Assignment",
+"Train_Knowledge",
+"Train_Skills",
+"Train_Attitude",
+"Video",
+"Design",
+"Pre_Post",
+"Blind",
+"Initial_N_exp",
+"Attrition",
+"Final_N_exp",
+"Final_N_con",
 "n_total",
-"es_pre_d",
-"selre_d",
-"knowpo_d",
-"skillp_d",
-"attitp_d",
-"allign_d",
-"twogr_d",
-"agecar_d",
-"exper_d"
+"Pretest_es",
+"Self_report",
+"DV_Knowledge",
+"DV_Skills",
+"DV_Attitude",
+"DV_Alligned",
+"Two_group_design",
+"Trainee_Age",
+"Trainee_Experience"
   )
   
   mfdat <- analyzedat[, c("id_exp", "yi", "vi", moderators)]
@@ -412,7 +502,8 @@ if(run_recursive_metaforest) {
       this_mod %in% names(x$forest$variable.importance)
     }))
   })
-  data_var_selected <- data.frame(Variable = factor(names(var_selected)[order(var_selected, decreasing = TRUE)], 
+
+    data_var_selected <- data.frame(Variable = factor(names(var_selected)[order(var_selected, decreasing = TRUE)], 
                                       levels = names(var_selected)[order(var_selected, decreasing = TRUE)]),
                     Selected = var_selected[order(var_selected, decreasing = TRUE)])
   plot_recursive <- ggplot(data_var_selected, 
@@ -420,6 +511,8 @@ if(run_recursive_metaforest) {
     geom_point() +
     geom_line(group = 1) +
     theme_bw()+
+    geom_hline(yintercept = 30, linetype = 2)+
+    ylab("Selected in % of iterations")+
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
   
   png("docs/plot_recursive.png", width = 720, height = 432, units = "px")
@@ -429,7 +522,6 @@ if(run_recursive_metaforest) {
   save(var_selected, file = "var_selected_100.RData")
   
   write.csv(data_var_selected, "var_selected_100.csv", row.names = FALSE)
-  #load("var_selected_100.RData")
   
   moderators <- c(names(var_selected)[var_selected > 30], "id_exp", "vi")
   
@@ -452,6 +544,7 @@ if(run_recursive_metaforest) {
                          tuneGrid = rf_grid, num.trees = 10000)
   
   save(cv.mf.cluster, file = "metaforest_preselected_100_output.RData")
+  #load("metaforest_preselected_100_output.RData")
   write.csv(cv.mf.cluster[["results"]], "cv_mf_results.csv", row.names = FALSE)
   
   png("docs/convergence.png", width = 720, height = 432, units = "px")
@@ -472,18 +565,32 @@ if(run_recursive_metaforest) {
   dev.off()
 
   png("docs/partial_dep_2.png", width = 720, height = 432, units = "px")
-  PartialDependence(cv.mf.cluster$finalModel, plot_vars[7:length(plot_vars)])
+  PartialDependence(cv.mf.cluster$finalModel, plot_vars[7:length(plot_vars)], rawdata = T, pi = .95)
   dev.off()
   
 } else {
   cv.mf.cluster <- list()
   cv.mf.cluster[["results"]] <- read.csv("cv_mf_results.csv")
   var_selected <- read.csv("var_selected_100.csv")
+  
+  #var_selected$Variable <- variable_labels$Newname[match(var_selected$Variable, variable_labels$Name)]
+  var_selected$Variable <- ordered(var_selected$Variable, levels = var_selected$Variable)
+  var_selected$Description <- variable_labels$Beschrijving[match(var_selected$Variable, variable_labels$Newname)]
+  plot_recursive <- ggplot(var_selected, 
+         aes(x = Variable, y = Selected, Description = Description)) +
+    geom_point() +
+    geom_line(group = 1) +
+    theme_bw()+
+    geom_hline(yintercept = 30, linetype = 2)+
+    ylab("Selected in % of iterations")+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
+  
   var_imp <- readRDS("var_imp.RData")
 }
 
 ```
-```{r table_vars}
+```{r table_vars, include = F}
 table_mods <- data.frame(Decision = c("Selected", "Dropped"), Variables= c(paste(
   var_selected$Variable[var_selected$Selected > 30], collapse = ", "), paste(
   var_selected$Variable[var_selected$Selected <= 30], collapse = ", ")))
@@ -495,7 +602,11 @@ table_mods %>%
   kable_styling("striped", font_size = 18)#font_size = 18, 
 ```
 
+<!--![](plot_recursive.png)-->
 
+```{r plot_recursive}
+ggplotly(plot_recursive, tooltip = c("Variable", "Description")) %>% config(displayModeBar = F)
+```
 
 ## Model tuning
 
@@ -512,7 +623,7 @@ Optimal model: `r cv.mf.cluster$results$whichweights[which.min(cv.mf.cluster$res
 
 ## Results
 
-Cross-validated $R^2_{cv} = `r nicetext(cv.mf.cluster[["results"]][["Rsquared"]][which.min(cv.mf.cluster[["results"]][["RMSE"]])])`$
+Cross-validated $R^2_{cv} `r nicetext(cv.mf.cluster[["results"]][["Rsquared"]][which.min(cv.mf.cluster[["results"]][["RMSE"]])])`$
 
 Clear evidence of model convergence:
 
@@ -535,11 +646,10 @@ if(FALSE){
   table_mods$importance.mf[match(names(cv.mf.cluster$finalModel$forest$variable.importance), table_mods$Variable)] <- 
     cv.mf.cluster$finalModel$forest$variable.importance
   
-  print_table <- table_mods
-  print_table[, c(2:5)] <- sapply(print_table[, c(2:5)], formatC, digits = 3, format = "f")
-  
+  write.csv(table_mods, "varimp_table.csv", row.names = FALSE)
   
   # Make plot
+  table_mods <- read.csv("varimp_table.csv")
   plotdat <- table_mods[!(is.na(table_mods$importance.all)&is.na(table_mods$importance.one)& (table_mods$importance.mf <= 0|is.na(table_mods$importance.mf))), ]
   plotdat$p.mf <- 1
   plotdat$p.mf[plotdat$importance.mf > 0] <- .02
@@ -576,7 +686,23 @@ if(FALSE){
 
 Contribution to predictive performance; encompasses interactions/non-linear effects
 
-![](var_imp.png)
+```{r variable_importance}
+varimpdat <- var_imp$data#[nrow(var_imp$data):1, ]
+names(varimpdat)[2] <- "Importance"
+
+varimpdat$Variable <- ordered(varimpdat$variable, 
+    levels = varimpdat$variable)
+varimpdat$Description <- variable_labels$Beschrijving[match(varimpdat$variable, variable_labels$Newname)]
+p <- ggplot(varimpdat, aes_string(y = "Variable", x = "Importance", Description = "Description")) + 
+    geom_segment(aes_string(x = 0, xend = "Importance", 
+      y = "Variable", yend = "Variable"), colour = "grey50", 
+      linetype = 2) + geom_vline(xintercept = 0, colour = "grey50", 
+    linetype = 1) + geom_point(shape = 1, size = 2) + xlab("Variable Importance (Permutation importance)") + 
+    theme_bw() + theme(panel.grid.major.x = element_blank(), 
+    panel.grid.minor.x = element_blank(), axis.title.y = element_blank())
+
+ggplotly(p, tooltip = c("Variable", "Importance", "Description")) %>% config(displayModeBar = F)
+```
 
 
 
@@ -606,7 +732,42 @@ Variable importance is defined as:
 
 ## Variables selected by method
 
-![](plot_imp.png)
+```{r varimp_plot}
+# Make plot
+  table_mods <- read.csv("varimp_table.csv")
+  plotdat <- table_mods[!(is.na(table_mods$importance.all)&is.na(table_mods$importance.one)& (table_mods$importance.mf <= 0|is.na(table_mods$importance.mf))), ]
+  plotdat$p.mf <- 1
+  plotdat$p.mf[plotdat$importance.mf > 0] <- .02
+  plotdat[, c("importance.all", "importance.one")] <- lapply(plotdat[, c("importance.all", "importance.one")], function(x){ (abs(x)/max(abs(x), na.rm = TRUE))*100 })
+  plotdat$importance.mf[plotdat$importance.mf < 0|is.na(plotdat$importance.mf)] <- 0
+  plotdat$importance.mf <- plotdat$importance.mf/max(abs(plotdat$importance.mf), na.rm = TRUE)*100
+  order_vars <- plotdat$Variable[order(rowSums(plotdat[, c("importance.all", "importance.one", "importance.mf")], na.rm = TRUE))]
+  #plotdat[, c("p.all", "p.one")] <- lapply(plotdat[, c("p.all", "p.one")], formatC, digits = 3, format = "f" )
+  
+  plotdat[, c("p.all", "p.one", "p.mf")] <- lapply(plotdat[, c("p.all", "p.one", "p.mf")], function(x){ ifelse(x < .05, 1, 0) })
+  
+  plotdat <- reshape(plotdat, varying = list(Importance = grep("importance", names(plotdat), value = TRUE),
+                                                p = grep("^p", names(plotdat), value = TRUE)),
+                     direction = "long", v.names = c("Importance", "p"), times = c("All", "One", "MF"))
+  plotdat$Variable <- ordered(plotdat$Variable, levels = order_vars)
+  plotdat$Importance[is.na(plotdat$Importance)] <- 0
+  plotdat$Method <- ordered(plotdat$time, levels = c("MF", "All", "One"), labels = c("Metaforest", "All predictors", "One at a time"))
+  plot_imp <- ggplot(NULL) + 
+    geom_bar(data = plotdat, aes(x = Variable, Importance, fill = Method), stat = "identity", position = "dodge") +
+    labs(x = NULL, y = "Importance (percentage of maximum score)") +
+    scale_y_continuous(expand = c(0, 0)) + 
+    theme_bw() +
+    coord_flip()
+plot_imp  
+```
+
+```{r varimp_table, include = FALSE}
+print_table <- table_mods
+  print_table[, c(2:5)] <- sapply(print_table[, c(2:5)], formatC, digits = 3, format = "f")
+print_table[print_table == "  NA"] <- ""
+names(print_table)[2:6] <- c("Beta all predictors", "p all predictors", "Beta one at a time", "p one at a time", "MF importance")
+DT::datatable(print_table)
+```
 
 ## Conclusions
 
