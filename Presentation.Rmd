@@ -233,27 +233,57 @@ A meta-analysis on the effect of training on caregiver competency
 
 Goals of meta-analysis:
 
-1. Summarize (quasi-)experimental studies
+1. Summarize (quasi-)experimental studies of caregiver training
 2. **What study characteristics are associated with training efficacy?**
 
 Thus: Moderator analysis was an explicit goal of the original work
 
-## Methods
+## The problem with moderators
 
-Searched for studies published between 1980 and 2005
+Meta-analysis intended to summarize highly similar studies
 
-Literature search:
+Often **(ab?)used** to summarize diverse bodies of literature
+
+Differences between studies can be coded as moderators and controlled using meta-regression
+
+Problem with meta-regression:
+
+* Lacks power to identify relevant moderators
+* Overfitting when the number of studies is not **much larger** than the number of moderators
+* And just forget about including interactions!
+
+**Fukkink & Lont coded 28 moderators, for 17 studies**
+
+## A solution: Metaforest
+
+Metaforest: Identifying relevant moderators in meta-analysis using the machine learning algorithm *random forests*  
+[R-package: Van Lissa, 2017](https://cran.r-project.org/package=metaforest)
+
+[Validation study: Van Lissa, 2017](https://osf.io/khjgb/)
+
+Advantages:
+
+* Simulations show high power with as few as 20 effect sizes
+* Controls overfitting
+* Accounts for interactions and non-linear effects
+
+
+## Description of the data
+
+Search terms:
+
+* train\*, instruct\*, educat\*, prepar\*, experiment\*
+* childcare, early childhood, preschool, caregiver\*, teacher\*
+
+Studies published between 1980 and 2005
+
+Databases:
 
 * ERIC
 * PsychINFO
 * SSCI
 * Gray literature
 * Backward search by author names
-
-Search terms:
-
-* train\*, instruct\*, educat\*, prepar\*, experiment\*
-* childcare, early childhood, preschool, caregiver\*, teacher\*
 
 Found `r max(analyzedat$id_exp)` unique samples, yielding `r nrow(analyzedat)` effect sizes (Hedges' G)
 
@@ -270,7 +300,7 @@ Not clear how many articles were screened at each step
 Studies were also located by searching for additional references in the references of collected reports. In addition, the databases were searched in a second round, using the names of the authors of relevant reports that had been identiﬁed in the original search. At the suggestion of Peters and Kostelnik (1981) and Saracho (1993; see the Introduction) and meta-analytical guidelines (e.g., Rosenthal, 1994), unofﬁcial publications (“fugitive literature”) were also included in the search. The broad-ranging search was followed by a selection of studies, based on a reading of their full content. Selection was based on the following criteria: First, we included only reports that provided information about studies involving specialized caregiver training with a focus on interaction skills with children (see Kontos & Wilcox-Herzog, 1997) in a regular childcare setting. Second, we included only those studies in which the caregiver was the primary focus of the evaluation, possibly supplemented with a focus on children. We did not include studies that focused speciﬁcally on children with disabilities, early childhood special education or residential childcare. Studies involving childcare counseling and consultation were also not included. Furthermore, we did not include studies that involved teacher competencies that are not directly related to regular caregiver–child interaction.2 Both two-group designs (i.e., with a treatment and comparison group) and one-group designs with a pretest and posttest were included. Like in many other applied research areas, the pool of relevant childcare studies comprises both designs (Shadish, Cook, & Campbell, 2002; Morris & DeShon, 2002). Following meta-analytic guidelines (Gibbons, Hedeker, & Davis, 1993; Morris & DeShon, 2002; Wampler, Reifman, & Serovich, 2005), we selected all studies to include all empirical evidence available 2 For example, the enhanced frequency of elaborated use of target words during interactive reading (see Wasik and Bond, 2001), speciﬁc caregiver behaviors during music activities (see De l’Etoile, 2001) or caregiver attitude towards math activities (see Arnold et al., 2002).  298 R.G. Fukkink, A. Lont / Early Childhood Research Quarterly 22 (2007) 294–311 pertaining to the central hypothesis of this study. Finally, we included only studies that reported the statistics that are necessary to deduce effect sizes. A number of studies did not contain this information. These studies, which included both group designs and single-subject designs, are brieﬂy discussed in a narrative review, but could not be included in the meta-analysis.
 -->
 
-## Dataset
+## Descriptive statistics
 
 Observed effect sizes ranged from `r nicetext(range(analyzedat[["yi"]])[1], equals = FALSE)` to `r nicetext(range(analyzedat[["yi"]])[2], equals = FALSE)`  
 $M_g `r nicetext(mean(analyzedat[["yi"]]))`$, $SD `r nicetext(sd(analyzedat[["yi"]]))`$
@@ -369,34 +399,16 @@ File drawer analysis indicated that $K = `r filedrawer[["fsnum"]]`$ studies aver
 
 # Moderator analyses
 
-## Meta-analysis on heterogeneous bodies of literature
+## Original moderator analyses
 
-Meta-analysis designed to summarize highly similar studies
+Original paper describes two approaches for determining important moderators:
 
-Often (ab?)used to summarize diverse bodies of research
+1. "All at once": A multivariate meta-regression model with several pre-selected moderators
+2. "One at a time": Univariate meta-regression analyses for each moderator
 
-Differences between studies can be coded as moderators
+We compared these methods against MetaForest
 
-Problem with classic meta-regression:
-
-* Lacks power to identify relevant moderators
-* Overfitting when the number of studies is not **much larger** than the number of moderators
-* And just forget about including interactions!
-
-**Fukkink & Lont coded 28 moderators, for 17 studies**
-
-## A solution: Metaforest
-
-Metaforest: Identifying relevant moderators in meta-analysis using the machine learning algorithm *random forests*  
-[R-package: Van Lissa, 2017](https://cran.r-project.org/package=metaforest)
-
-[Validation study: Van Lissa, 2017](https://osf.io/khjgb/)
-
-Advantages:
-
-* Simulations show high power with as few as 20 effect sizes
-* Controls overfitting
-* Accounts for interactions and non-linear effects
+## Multilevel data solution
 
 When dealing with multilevel data:
 
@@ -406,7 +418,7 @@ When dealing with multilevel data:
     + Cross-predictions
     + <font size="2">[Janitza, Celik, & Boulesteix, 2016](https://doi.org/10.1007/s11634-016-0276-4)</font>
 
-## Recursive pre-selection algorithm
+## Recursive pre-selection algorithm for p >> N
 
 **Problem:** Very large number of potential moderators (28)
 
@@ -419,8 +431,7 @@ Algorithm:
 3. **If** no moderators have negative importance values, or only one moderator, return the resulting model  
    **Else**, drop the variable with most negative variable importance, go back to Step 2
 
-Retained moderators selected in 30\%+ of replications
-
+Moderators selected in 30\%+ of replications are retained for further analysis
 
 ## Recursive pre-selection results
 
@@ -608,9 +619,9 @@ table_mods %>%
 ggplotly(plot_recursive, tooltip = c("Variable", "Description")) %>% config(displayModeBar = F)
 ```
 
-## Model tuning
+## Model tuning and cross-validation
 
-Finding optimal analysis settings
+Goal: Finding optimal settings for MetaForest analysis
 
 * 10-fold (clustered) cross-validation
 * Settings considered:
@@ -666,7 +677,7 @@ if(FALSE){
                      direction = "long", v.names = c("Importance", "p"), times = c("All", "One", "MF"))
   plotdat$Variable <- ordered(plotdat$Variable, levels = order_vars)
   plotdat$Importance[is.na(plotdat$Importance)] <- 0
-  plotdat$Method <- ordered(plotdat$time, levels = c("MF", "All", "One"), labels = c("Metaforest", "All predictors", "One at a time"))
+  plotdat$Method <- ordered(plotdat$time, levels = c("MF", "All", "One"), labels = c("Metaforest", "All at once", "One at a time"))
   plot_imp <- ggplot(NULL) + 
     geom_bar(data = plotdat, aes(x = Variable, Importance, fill = Method), stat = "identity", position = "dodge") +
     labs(x = NULL, y = "Importance (percentage of maximum score)") +
@@ -706,31 +717,20 @@ ggplotly(p, tooltip = c("Variable", "Importance", "Description")) %>% config(dis
 
 
 
-## Bivariate marginal associations 1/2
-
-"Main effects", averaging over all other predictors
-
-![](partial_dep_1.png)
-
-## Bivariate marginal associations 2/2
-
-![](partial_dep_2.png)
-
 ## Difference with original paper
 
-Original paper describes two "methods" for determining important moderators:
+Approaches compared:
 
-1. A multivariate meta-regression model with all pre-selected moderators
-2. Univariate meta-regression analyses
-
-We compared both these methods against metaforest
+1. "All at once": A multivariate meta-regression model with multiple pre-selected moderators
+2. "One at a time": Univariate meta-regression analyses for each moderator
+3. "MF": MetaForest analysis
 
 Variable importance is defined as:
 
 * Effect size ($\beta$) for regression
 * Permutation importance for metaforest
 
-## Variables selected by method
+For the sake of making visual comparisons, (absolute) variable importance was rescaled to percentage-of-maximum
 
 ```{r varimp_plot}
 # Make plot
@@ -751,25 +751,74 @@ Variable importance is defined as:
                      direction = "long", v.names = c("Importance", "p"), times = c("All", "One", "MF"))
   plotdat$Variable <- ordered(plotdat$Variable, levels = order_vars)
   plotdat$Importance[is.na(plotdat$Importance)] <- 0
-  plotdat$Method <- ordered(plotdat$time, levels = c("MF", "All", "One"), labels = c("Metaforest", "All predictors", "One at a time"))
+  plotdat$Method <- ordered(plotdat$time, levels = c("MF", "All", "One"), labels = c("Metaforest", "All at once", "One at a time"))
+  plotdat$Description <- variable_labels$Beschrijving[match(plotdat$Variable, variable_labels$Newname)]
+  suppressWarnings(
   plot_imp <- ggplot(NULL) + 
-    geom_bar(data = plotdat, aes(x = Variable, Importance, fill = Method), stat = "identity", position = "dodge") +
+    geom_bar(data = plotdat, aes(x = Variable, Importance, fill = Method, Description = Description), stat = "identity", position = "dodge") +
     labs(x = NULL, y = "Importance (percentage of maximum score)") +
     scale_y_continuous(expand = c(0, 0)) + 
     theme_bw() +
     coord_flip()
-plot_imp  
+  )
+ggplotly(plot_imp, tooltip = c("Variable", "Method", "Importance", "Description")) %>% config(displayModeBar = F)
 ```
 
 ```{r varimp_table, include = FALSE}
 print_table <- table_mods
   print_table[, c(2:5)] <- sapply(print_table[, c(2:5)], formatC, digits = 3, format = "f")
 print_table[print_table == "  NA"] <- ""
-names(print_table)[2:6] <- c("Beta all predictors", "p all predictors", "Beta one at a time", "p one at a time", "MF importance")
+names(print_table)[2:6] <- c("Beta All at once", "p All at once", "Beta one at a time", "p one at a time", "MF importance")
 DT::datatable(print_table)
 ```
 
+## Comparing approaches
+
+**Variables selected by all approaches:**
+
+The fact that these variables were selected in all approaches suggests that these findings are reliable and likely to generalize to new studies/trainings
+
+* DV_Alligned; whether the dependent variable matched the content of the training
+* Location; whether the training was implemented across many sites or in one care center
+* Curriculum; whether the training followed a fixed curriculum
+
+**Variables only selected by meta-regression:**
+
+The fact that these variables were **not** selected by MetaForest suggests that the pattern in the data does not hold up to bagging and cross-validation. In other words, meta-regression might be capturing noise caused by a few outliers
+
+* Journal; whether the study was published in an academic journal
+* DV_Skills; whether the dependent variable assessed skills
+
+**Variables only selected by MetaForest:**
+
+The fact that these variables were **not** selected by meta-regression suggests that this analysis lacks power, or that the effects of these variables are non-linear or interactive
+
+* Final_N_exp and n_total; number of participants in the experimental condition and in total
+    + Marginal association plots suggest a non-linear effect: Very small studies tend to have larger effect sizes
+* Pretest_es; effect size at pretest
+    + Marginal association plots suggest a non-linear effect: Studies with a positive ES at pre-test tend to have a larger ES at post-test, as well
+    
+* Several other variables were selected, but their variable importance was infinitessimal
+
+
+## Bivariate marginal association plots 1/2
+
+"Main effects" of each moderator, averaging over all values of the other moderators
+
+![](partial_dep_1.png)
+
+## Bivariate marginal association plots 2/2
+
+![](partial_dep_2.png)
+
+
 ## Conclusions
+
+MetaForest has an advantage at weeding out relevant moderators, and controls for overfitting
+
+This advantage was especially obvious for continuous moderators with non-linear effects
+
+Of course, binary moderators have a linear effect by definition
 
 <!-- <font size="4">**Substantive**
 

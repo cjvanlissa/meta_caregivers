@@ -28,9 +28,4 @@ parex_d,Initial N of the experimental condition,Initial_N_exp,Methodological
 n_exp_d,Final N of the experimental condition,Final_N_exp,Methodological
 n_con2,Final N of the control condition,Final_N_con,Methodological
 es_pre_d,Pre-test effect size,Pretest_es,Methodological
-,,,
-,,,
-,,,
-,,,
-,,,
-,,,
+n_total,Total n at post-test,n_total,Methodological

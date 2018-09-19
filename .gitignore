@@ -7,3 +7,4 @@ old/
 *.tex
 *.RData
 !metafor_results.RData
+.Rproj.user
