@@ -8,3 +8,10 @@ old/
 *.RData
 !metafor_results.RData
 .Rproj.user
+*.pdf
+*.pptx
+*.csv
+*.png
+Presentation_poster.Rmd
+docs/index.html
+index.html

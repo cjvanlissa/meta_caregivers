@@ -216,7 +216,8 @@ funnel_plotlyfi <- function(x, labels = NULL) {
     scale_x_continuous(breaks = seq(-1.25, 2, 0.25)) +
     theme_bw()+
     theme(legend.position="none")
-  ggplotly(fp, tooltip = "text") %>% config(displayModeBar = F)
+  ggplotly(fp, tooltip = "text") %>% config(displayModeBar = F) %>% 
+  layout(yaxis=list(fixedrange=TRUE), xaxis=list(fixedrange=TRUE))
 }
 
 
@@ -268,7 +269,7 @@ Advantages:
 * Accounts for interactions and non-linear effects
 
 
-## Description of the data
+## Systematic review
 
 Search terms:
 
@@ -616,7 +617,8 @@ table_mods %>%
 <!--![](plot_recursive.png)-->
 
 ```{r plot_recursive}
-ggplotly(plot_recursive, tooltip = c("Variable", "Description")) %>% config(displayModeBar = F)
+ggplotly(plot_recursive, tooltip = c("Variable", "Description")) %>% config(displayModeBar = F) %>% 
+  layout(yaxis=list(fixedrange=TRUE), xaxis=list(fixedrange=TRUE))
 ```
 
 ## Model tuning and cross-validation
@@ -712,12 +714,13 @@ p <- ggplot(varimpdat, aes_string(y = "Variable", x = "Importance", Description 
     theme_bw() + theme(panel.grid.major.x = element_blank(), 
     panel.grid.minor.x = element_blank(), axis.title.y = element_blank())
 
-ggplotly(p, tooltip = c("Variable", "Importance", "Description")) %>% config(displayModeBar = F)
+ggplotly(p, tooltip = c("Variable", "Importance", "Description")) %>% config(displayModeBar = F) %>% 
+  layout(yaxis=list(fixedrange=TRUE), xaxis=list(fixedrange=TRUE))
 ```
 
 
 
-## Difference with original paper
+## Comparing approaches
 
 Approaches compared:
 
@@ -729,8 +732,7 @@ Variable importance is defined as:
 
 * Effect size ($\beta$) for regression
 * Permutation importance for metaforest
-
-For the sake of making visual comparisons, (absolute) variable importance was rescaled to percentage-of-maximum
+* To allow comparisons, both measures are rescaled to percentage-of-maximum
 
 ```{r varimp_plot}
 # Make plot
@@ -772,11 +774,9 @@ names(print_table)[2:6] <- c("Beta All at once", "p All at once", "Beta one at a
 DT::datatable(print_table)
 ```
 
-## Comparing approaches
-
 **Variables selected by all approaches:**
 
-The fact that these variables were selected in all approaches suggests that these findings are reliable and likely to generalize to new studies/trainings
+These findings are reliable and likely to generalize to new studies/trainings
 
 * DV_Alligned; whether the dependent variable matched the content of the training
 * Location; whether the training was implemented across many sites or in one care center
@@ -784,30 +784,28 @@ The fact that these variables were selected in all approaches suggests that thes
 
 **Variables only selected by meta-regression:**
 
-The fact that these variables were **not** selected by MetaForest suggests that the pattern in the data does not hold up to bagging and cross-validation. In other words, meta-regression might be capturing noise caused by a few outliers
+These variables were **not** selected by MetaForest, suggesting that their effect does not hold up to bagging and cross-validation. In other words, meta-regression might be overfitting: Capturing noise caused by a few outliers
 
 * Journal; whether the study was published in an academic journal
 * DV_Skills; whether the dependent variable assessed skills
 
 **Variables only selected by MetaForest:**
 
-The fact that these variables were **not** selected by meta-regression suggests that this analysis lacks power, or that the effects of these variables are non-linear or interactive
+The fact that these variables were **not** selected by meta-regression suggests their effects might be non-linear or interactive
 
 * Final_N_exp and n_total; number of participants in the experimental condition and in total
     + Marginal association plots suggest a non-linear effect: Very small studies tend to have larger effect sizes
 * Pretest_es; effect size at pretest
     + Marginal association plots suggest a non-linear effect: Studies with a positive ES at pre-test tend to have a larger ES at post-test, as well
     
-* Several other variables were selected, but their variable importance was infinitessimal
+* Several other variables were selected with infinitessimal variable importance
 
-
-## Bivariate marginal association plots 1/2
+## Bivariate marginal association plots
 
 "Main effects" of each moderator, averaging over all values of the other moderators
 
 ![](partial_dep_1.png)
 
-## Bivariate marginal association plots 2/2
 
 ![](partial_dep_2.png)
 
@@ -819,6 +817,8 @@ MetaForest has an advantage at weeding out relevant moderators, and controls for
 This advantage was especially obvious for continuous moderators with non-linear effects
 
 Of course, binary moderators have a linear effect by definition
+
+Conclusion: Metaforest is a powerful exploratory method for identifying relevant moderators in meta-analysis, while controlling for overfitting
 
 <!-- <font size="4">**Substantive**
 
